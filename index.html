@@ -514,12 +514,33 @@ function applyFx(fx) {
   }
 }
 /* conta escolhas gentis (amor) e ruins (frieza, orgulho, grosseria) */
+/* quanto cada tipo de resposta pesa, conforme o jeito natural de cada garoto:
+   o Sae é frio por natureza, o Rin e o Kaiser são orgulhosos, o Isagi é gentil */
+const PESO = {
+  sae: { frio: 0, orgulho: 1, grosso: 1 },
+  rin: { frio: 0.5, orgulho: 0, grosso: 1 },
+  isagi: { frio: 1, orgulho: 1, grosso: 1 },
+  kaiser: { frio: 1, orgulho: 0, grosso: 1 },
+};
+const peso = () => PESO[boy] || PESO.isagi;
 function scoreChoice(fx) {
   const ps = String(fx || "").split(",").map((x) => x.trim());
-  if (ps.some((x) => x.startsWith("ignor+"))) vars._ruim = num("_ruim") + 1;
-  else if (ps.some((x) => x.startsWith("trai+"))) vars._ruim = num("_ruim") + 2;
+  const w = peso();
+  if (ps.some((x) => x.startsWith("trai+"))) vars._ruim = num("_ruim") + 2;
+  else if (ps.some((x) => x.startsWith("ignor+"))) vars._ruim = num("_ruim") + w.grosso;
   else if (ps.some((x) => x.startsWith("amor+"))) vars._bom = num("_bom") + 1;
-  else if (ps.some((x) => x.startsWith("frieza+") || x.startsWith("orgulho+"))) vars._ruim = num("_ruim") + 1;
+  else if (ps.some((x) => x.startsWith("frieza+"))) vars._ruim = num("_ruim") + w.frio;
+  else if (ps.some((x) => x.startsWith("orgulho+"))) vars._ruim = num("_ruim") + w.orgulho;
+}
+/* saves feitos antes dessa regra: recalcula, se o caminho ainda não foi decidido */
+function migrateRegra() {
+  if (vars._regra === 2) return;
+  vars._regra = 2;
+  if (vars.caminho || vars._ruim === undefined) return;
+  const w = peso(), st = (BOYS[boy] && BOYS[boy].start) || {};
+  const gro = num("ignor"), org = Math.max(0, num("orgulho") - (st.orgulho || 0));
+  const fri = Math.max(0, num("_ruim") - gro - org);
+  vars._ruim = Math.min(num("_ruim"), gro * w.grosso + org * w.orgulho + fri * w.frio);
 }
 /* diário de escolhas (vai junto no save) */
 function logChoice(text, fx, where) {
@@ -1299,13 +1320,15 @@ function loadSlot(i) {
   runToken++; $("map").style.display = "none"; $("phone").style.display = "none"; phone.conv = null; mapState = null;
   rbClear();
   vars = d.vars || {}; boy = d.boy || "sae"; pc = migratePc(d); glitchBase = d.glitch || 0;
+  migrateRegra();
   hideAll(true); skins = d.skins || {};
   setBgInstant(d.bg || "preto");
   for (const id in (d.shown || {})) showSprite(id, d.shown[id]);
   setTint(d.tint || "off");
   playMusic(d.music || "");
   cardL.style.display = "none"; poemL.style.display = "none"; spritesL.style.visibility = "visible"; choicesL.innerHTML = "";
-  if (!chrs || (!hasChr("aiko") && !hasChr("hina") && (vars.ato || 1) === 1)) createChr();
+  /* save do Ato 1 antes do caminho ser decidido: a pasta volta inteira */
+  if (!chrs || ((vars.ato || 1) === 1 && !vars.caminho && ["hina", "yoru", "mei", "aiko"].some((g) => !hasChr(g)))) createChr();
   run();
 }
 
@@ -1413,6 +1436,7 @@ function showBoySelect() {
 function newGame(id) {
   clearScreens(); boy = id; vars = { ato: 1 };
   for (const k in BOYS[id].start) vars[k] = BOYS[id].start[k];
+  vars._regra = 2;
   history = []; glitchBase = 0; glitchExtra = 0; setTint("off"); lockUntil = 0; rbClear();
   createChr(); hideAll(true); setBgInstant("preto"); playMusic("stop");
   pc = labels.inicio || 0;
