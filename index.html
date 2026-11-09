@@ -521,6 +521,16 @@ function scoreChoice(fx) {
   else if (ps.some((x) => x.startsWith("amor+"))) vars._bom = num("_bom") + 1;
   else if (ps.some((x) => x.startsWith("frieza+") || x.startsWith("orgulho+"))) vars._ruim = num("_ruim") + 1;
 }
+/* diário de escolhas (vai junto no save) */
+function logChoice(text, fx, where) {
+  const ps = String(fx || "").split(",").map((x) => x.trim());
+  const k = ps.some((x) => x.startsWith("trai+")) ? "trai" : ps.some((x) => x.startsWith("ignor+")) ? "grosso"
+    : ps.some((x) => x.startsWith("amor+")) ? "gentil" : ps.some((x) => x.startsWith("frieza+")) ? "frio"
+    : ps.some((x) => x.startsWith("orgulho+")) ? "orgulho" : "-";
+  if (!Array.isArray(vars._log)) vars._log = [];
+  vars._log.push([where || "", k, String(text).replace(/\s+/g, " ").slice(0, 90)]);
+  if (vars._log.length > 600) vars._log.shift();
+}
 function ruimPct() { const t = num("_bom") + num("_ruim"); return t ? num("_ruim") * 100 / t : 0; }
 function getv(k) {
   if (k === "ruim_pct") return ruimPct();
@@ -838,6 +848,7 @@ function onChoice(o) {
   choicesL.innerHTML = ""; playSfx("sino");
   history.push("➤ " + subst(o.text));
   vars.r = "";
+  logChoice(subst(o.text), o.fx, "d" + num("dia") + (vars.ato ? "a" + vars.ato : ""));
   scoreChoice(o.fx);
   applyFx(o.fx);
   if (o.to && o.to !== "-") jump(o.to);
@@ -936,6 +947,7 @@ function pickMap(o) {
   playSfx("pagina");
   const lid = o.text.split("~")[0].trim();
   history.push("📍 " + (LOCS[lid] ? LOCS[lid].n : lid));
+  logChoice(LOCS[lid] ? LOCS[lid].n : lid, "", "📍");
   applyFx(o.fx);
   if (o.to && o.to !== "-") jump(o.to);
   run();
@@ -1030,7 +1042,7 @@ function phoneChoices(opts) {
       else chat.appendChild(el("div", "bub sys", "(" + t + ")"));
       chat.scrollTop = chat.scrollHeight;
       history.push("➤ " + t);
-      vars.r = ""; scoreChoice(o.fx); applyFx(o.fx);
+      vars.r = ""; logChoice(t, o.fx, "📱" + (phone.conv || "")); scoreChoice(o.fx); applyFx(o.fx);
       if (o.to && o.to !== "-") jump(o.to);
       state = "phone"; run();
     };
