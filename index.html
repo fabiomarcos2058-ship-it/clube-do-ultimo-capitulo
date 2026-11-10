@@ -684,9 +684,12 @@ const peso = () => PESO[boy] || PESO.isagi;
 function scoreChoice(fx) {
   const ps = String(fx || "").split(",").map((x) => x.trim());
   const w = peso();
+  /* resposta fria/orgulhosa que AGRADA alguém (ex.: o Sasuke gosta de silêncio) não é "ruim": é estilo */
+  const agrada = ps.some((x) => { const m = x.match(/^([a-z]+)\+\d/); return m && CHARS[m[1]] && m[1] !== boy; });
   if (ps.some((x) => x.startsWith("trai+"))) vars._ruim = num("_ruim") + 2;
   else if (ps.some((x) => x.startsWith("ignor+"))) vars._ruim = num("_ruim") + w.grosso;
   else if (ps.some((x) => x.startsWith("amor+"))) vars._bom = num("_bom") + 1;
+  else if (agrada) return;
   else if (ps.some((x) => x.startsWith("frieza+"))) vars._ruim = num("_ruim") + w.frio;
   else if (ps.some((x) => x.startsWith("orgulho+"))) vars._ruim = num("_ruim") + w.orgulho;
 }
